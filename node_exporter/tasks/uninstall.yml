@@ -1,0 +1,46 @@
+---
+- name: Set Download and binary name
+  ansible.builtin.include_tasks: helper/set_download_url_and_binary.yml
+
+- name: "Stop node_exporter service"
+  ansible.builtin.systemd:
+    state: stopped
+    daemon_reload: yes
+    name: node_exporter
+  register: stop_service_result
+  failed_when: false
+
+- name: "Remove rule for port 9100"
+  ansible.builtin.iptables:
+    action: append
+    chain: INPUT
+    protocol: tcp
+    destination_port: "9100"
+    ctstate: ["NEW", "ESTABLISHED"]
+    match: ["conntrack"]
+    jump: "ACCEPT"
+    state: absent
+  changed_when: false
+
+- name: "Restart firewalld service (RedHat)"
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: yes
+    name: firewalld
+  when: ansible_os_family == "RedHat"
+  changed_when: false
+
+- name: "Remove service file"
+  ansible.builtin.file:
+    path: /etc/systemd/system/node_exporter.service
+    state: absent
+
+- name: "Remove download folder"
+  ansible.builtin.file:
+    path: "{{ download_path }}"
+    state: absent
+
+- name: "Delete '{{ username }}' User"
+  ansible.builtin.user:
+    name: "{{ username }}"
+    state: absent

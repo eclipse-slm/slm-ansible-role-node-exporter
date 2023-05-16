@@ -1,0 +1,9 @@
+---
+- name: Converge - Install (ssh)
+  hosts: ssh
+  gather_facts: yes
+  become: yes
+  tasks:
+    - name: "Include node_exporter - state = present"
+      ansible.builtin.include_role:
+        name: "node_exporter"

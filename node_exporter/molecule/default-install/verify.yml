@@ -1,0 +1,16 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify - node_exporter - install (ssh)
+  hosts: ssh
+  gather_facts: no
+  tasks:
+    - name: Wait for port 9100 being available
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 9100
+        timeout: 10
+
+    - name: Send GET request to nodeexporter endpoint
+      ansible.builtin.uri:
+        url: "http://{{ansible_host}}:9100"

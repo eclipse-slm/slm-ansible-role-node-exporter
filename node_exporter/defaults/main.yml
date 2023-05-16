@@ -1,0 +1,7 @@
+---
+# defaults file for node_exporter
+node_exporter_version: "1.5.0"
+username: "node_exporter"
+
+download_file_name: "node_exporter_{{ node_exporter_version }}.tar.gz"
+download_path: "/opt/node-exporter/"

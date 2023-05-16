@@ -1,0 +1,11 @@
+---
+- name: Converge - Uninstall (ssh)
+  hosts: ssh
+  gather_facts: yes
+  become: yes
+  vars:
+    state: absent
+  tasks:
+    - name: "Include node_exporter - state = absent"
+      ansible.builtin.include_role:
+        name: "node_exporter"

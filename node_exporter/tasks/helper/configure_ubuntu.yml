@@ -1,0 +1,7 @@
+---
+- name: Install wget unzip tar
+  apt:
+    name:
+      - wget
+      - unzip
+      - tar

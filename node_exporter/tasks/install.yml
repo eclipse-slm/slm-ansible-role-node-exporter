@@ -1,0 +1,86 @@
+---
+- name: Set Download and binary name
+  ansible.builtin.include_tasks: helper/set_download_url_and_binary.yml
+
+- name: "Create '{{ username }}' User"
+  ansible.builtin.user:
+    name: "{{ username }}"
+
+- name: "Check download destination"
+  ansible.builtin.stat:
+    path: "{{ download_path }}"
+  register: stat_download_folder
+
+- name: "Create a download destination at {{ download_path }}"
+  ansible.builtin.file:
+    path: "{{ download_path }}"
+    state: directory
+    owner: "{{ username }}"
+    mode: '0755'
+  when: stat_download_folder.stat.exists == false
+
+- name: Configure Ubuntu Guest
+  ansible.builtin.include_tasks: helper/configure_ubuntu.yml
+  when: ansible_os_family == "Debian"
+
+- name: "Check download file"
+  ansible.builtin.stat:
+    path: "{{ download_path }}{{download_file_name}}"
+  register: stat_download_file
+
+- name: "Download node exporter in version {{ node_exporter_version }}"
+  ansible.builtin.get_url:
+    url: "{{ download_url }}"
+    dest: "{{ download_path }}{{download_file_name}}"
+    owner: "{{ username }}"
+  when: stat_download_file.stat.exists == false
+
+- name: "Check if tar.gz file is already unzipped"
+  ansible.builtin.stat:
+    path: "{{ binary_path }}"
+  register: binary_info
+
+- name: "Unzip tar.gz file"
+  ansible.builtin.unarchive:
+    src: "{{ download_path }}{{download_file_name}}"
+    dest: "{{ download_path }}"
+    remote_src: yes
+  when: not binary_info.stat.exists
+
+- name: "Change owner of folder {{ download_path }}"
+  ansible.builtin.file:
+    path: "{{ download_path }}"
+    owner: "{{ username }}"
+    recurse: yes
+
+- name: "Copy service file"
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    force: yes
+
+# iptables -A INPUT -p tcp --dport 9100 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+- name: "Add rule for port 9100"
+  ansible.builtin.iptables:
+    action: append
+    chain: INPUT
+    protocol: tcp
+    destination_port: "9100"
+    ctstate: ["NEW", "ESTABLISHED"]
+    match: ["conntrack"]
+    jump: "ACCEPT"
+  changed_when: false
+
+- name: "Restart firewalld service (RedHat)"
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: yes
+    name: firewalld
+  when: ansible_os_family == "RedHat"
+  changed_when: false
+
+- name: "Start node_exporter service"
+  ansible.builtin.systemd:
+    state: started
+    daemon_reload: yes
+    name: node_exporter
